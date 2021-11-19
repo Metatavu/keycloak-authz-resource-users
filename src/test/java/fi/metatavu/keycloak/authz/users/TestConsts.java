@@ -1,5 +1,8 @@
 package fi.metatavu.keycloak.authz.users;
 
+/**
+ * Contants for tests
+ */
 public class TestConsts {
 
   public static final String[] GROUP_1_USER_IDS = {
@@ -97,4 +100,6 @@ public class TestConsts {
   public static final String RESOURCE_2_ID = "bef2c4cd-fb62-406d-9954-aa0cfdac62a4";
   public static final String RESOURCE_3_ID = "61f61899-188a-477a-8fc7-3d090b5adc3e";
   public static final String RESOURCE_4_ID = "d0a894c0-d6a4-44dc-b7cb-db2a78d1c6f0";
+  public static final String RESOURCE_5_ID = "7abacf64-9589-440f-b96b-113346fd5026";
+  public static final String RESOURCE_6_ID = "d52a6206-d1f0-481a-abc1-9904a902b5c3";
 }

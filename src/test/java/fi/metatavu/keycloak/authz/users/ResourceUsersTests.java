@@ -91,9 +91,8 @@ class ResourceUsersTests {
       .assertThat()
       .statusCode(200)
       .contentType(ContentType.JSON)
-      .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length + 1))
-      .body("", hasItems(TestConsts.GROUP_2_USER_IDS))
-      .body("", hasItems(TestConsts.USER_1_GROUP_4_ID));
+      .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length))
+      .body("", hasItems(TestConsts.GROUP_2_USER_IDS));
   }
 
   /**
@@ -106,13 +105,32 @@ class ResourceUsersTests {
     given()
       .baseUri(keycloak.getAuthServerUrl())
       .when()
-      .get(String.format("/realms/test/authz-resource-users/clients/e5ad8dc7-67f4-4d58-baab-b7162c53bced/resource/%s/users", TestConsts.RESOURCE_4_ID))
+      .get(String.format("/realms/test/authz-resource-users/clients/e5ad8dc7-67f4-4d58-baab-b7162c53bced/resource/%s/users", TestConsts.RESOURCE_5_ID))
       .then()
       .assertThat()
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length))
       .body("", hasItems(TestConsts.GROUP_2_USER_IDS));
+  }
+
+  /**
+   * Asserts that resource 6 is allowed only for user 1 in group 4 via user policy
+   */
+  @Test
+  void testResource6Users() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .get(String.format("/realms/test/authz-resource-users/clients/e5ad8dc7-67f4-4d58-baab-b7162c53bced/resource/%s/users", TestConsts.RESOURCE_6_ID))
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(1))
+      .body("", hasItems(TestConsts.USER_1_GROUP_4_ID));
   }
 
 }

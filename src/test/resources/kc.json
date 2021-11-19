@@ -1499,6 +1499,14 @@
         "attributes" : { },
         "_id" : "7abacf64-9589-440f-b96b-113346fd5026",
         "uris" : [ "/types/2/resources/5" ]
+      }, {
+        "name" : "resource-6",
+        "type" : "type-3",
+        "ownerManagedAccess" : false,
+        "displayName" : "Resource 6",
+        "attributes" : { },
+        "_id" : "d52a6206-d1f0-481a-abc1-9904a902b5c3",
+        "uris" : [ "/types/3/resources/6" ]
       } ],
       "policies" : [ {
         "id" : "5b4a60e6-6897-41e1-b50d-1e8a48a73048",
@@ -1562,39 +1570,39 @@
         "name" : "allow-type-2-group-2",
         "type" : "resource",
         "logic" : "POSITIVE",
-        "decisionStrategy" : "UNANIMOUS",
+        "decisionStrategy" : "AFFIRMATIVE",
         "config" : {
           "defaultResourceType" : "type-2",
           "applyPolicies" : "[\"group-2\"]"
-        }
-      }, {
-        "id" : "e1789611-14ba-454c-8055-70cdd7a17f25",
-        "name" : "allow-resource-3-to-group-3-role",
-        "type" : "resource",
-        "logic" : "POSITIVE",
-        "decisionStrategy" : "UNANIMOUS",
-        "config" : {
-          "resources" : "[\"resource-3\"]",
-          "applyPolicies" : "[\"group-3-role\"]"
         }
       }, {
         "id" : "dd688221-4011-48ce-9cb1-60ef18d5db25",
         "name" : "allow-resource-1-to-group-1",
         "type" : "resource",
         "logic" : "POSITIVE",
-        "decisionStrategy" : "UNANIMOUS",
+        "decisionStrategy" : "AFFIRMATIVE",
         "config" : {
           "resources" : "[\"resource-1\"]",
           "applyPolicies" : "[\"group-1\"]"
         }
       }, {
-        "id" : "37ba5b86-991d-4c50-9716-d038c9d002b2",
-        "name" : "allow-resource-4-to-user-1-group-4",
+        "id" : "e1789611-14ba-454c-8055-70cdd7a17f25",
+        "name" : "allow-resource-3-to-group-3-role",
         "type" : "resource",
         "logic" : "POSITIVE",
-        "decisionStrategy" : "UNANIMOUS",
+        "decisionStrategy" : "AFFIRMATIVE",
         "config" : {
-          "resources" : "[\"resource-4\"]",
+          "resources" : "[\"resource-3\"]",
+          "applyPolicies" : "[\"group-3-role\"]"
+        }
+      }, {
+        "id" : "37ba5b86-991d-4c50-9716-d038c9d002b2",
+        "name" : "allow-resource-6-to-user-1-group-4",
+        "type" : "resource",
+        "logic" : "POSITIVE",
+        "decisionStrategy" : "AFFIRMATIVE",
+        "config" : {
+          "resources" : "[\"resource-6\"]",
           "applyPolicies" : "[\"user-1.group-4\"]"
         }
       } ],
@@ -2140,7 +2148,7 @@
       }
     } ]
   } ],
-  "defaultDefaultClientScopes" : [ "email", "web-origins", "roles", "profile", "role_list" ],
+  "defaultDefaultClientScopes" : [ "role_list", "profile", "email", "roles", "web-origins" ],
   "defaultOptionalClientScopes" : [ "offline_access", "address", "phone", "microprofile-jwt" ],
   "browserSecurityHeaders" : {
     "contentSecurityPolicyReportOnly" : "",
