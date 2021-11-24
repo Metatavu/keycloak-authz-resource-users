@@ -7,8 +7,6 @@ import org.keycloak.representations.AccessTokenResponse;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.IOException;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
