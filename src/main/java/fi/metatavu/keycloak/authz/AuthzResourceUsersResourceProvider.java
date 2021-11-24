@@ -20,19 +20,17 @@ import org.keycloak.authorization.store.StoreFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
+import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.idm.authorization.AuthorizationRequest;
 import org.keycloak.representations.idm.authorization.Permission;
 import org.keycloak.services.resource.RealmResourceProvider;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Class for providing REST paths for authz resource users
@@ -56,7 +54,14 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
   @Path("/clients/{clientId}/resource/{resourceId}/users")
   @Produces(MediaType.APPLICATION_JSON)
   @NoCache
-  public Response getCerts(@Context HttpRequest request, @PathParam("clientId") String clientId, @PathParam("resourceId") String resourceId) {
+  public Response listResourceUsers(
+    @Context HttpRequest request,
+    @PathParam("clientId") String clientId,
+    @PathParam("resourceId") String resourceId,
+    @QueryParam("search") String search,
+    @QueryParam("first") Long first,
+    @QueryParam("max") Long max
+  ) {
     RealmModel realm = session.getContext().getRealm();
 
     AuthorizationProviderFactory authorizationProviderFactory = (AuthorizationProviderFactory) session.getKeycloakSessionFactory().getProviderFactory(AuthorizationProvider.class);
@@ -78,11 +83,34 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
         .build();
     }
 
-    List<UserModel> users = session.users().getUsersStream(realm, false)
-      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource))
-      .collect(Collectors.toList());
+    Stream<UserModel> userStream = getUserStream(realm, search)
+      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource));
 
-    return Response.ok(users.stream().map(UserModel::getId).collect(Collectors.toList())).build();
+    if (first != null) {
+      userStream = userStream.skip(first);
+    }
+
+    if (max != null) {
+      userStream = userStream.limit(max);
+    }
+
+    return Response.ok(userStream.map(ModelToRepresentation::toBriefRepresentation))
+        .build();
+  }
+
+  /**
+   * Returns stream to users
+   *
+   * @param realm realm
+   * @param search search string (optional)
+   * @return stream for matching users
+   */
+  private Stream<UserModel> getUserStream(RealmModel realm, String search) {
+    if (search != null) {
+      return session.users().searchForUserStream(realm, search);
+    }
+
+    return session.users().getUsersStream(realm, false);
   }
 
   /**

@@ -37,7 +37,7 @@ class ResourceUsersTests {
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(TestConsts.GROUP_1_USER_IDS.length))
-      .body("", hasItems(TestConsts.GROUP_1_USER_IDS));
+      .body("id", hasItems(TestConsts.GROUP_1_USER_IDS));
   }
 
   /**
@@ -73,7 +73,7 @@ class ResourceUsersTests {
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(TestConsts.GROUP_3_USER_IDS.length))
-      .body("", hasItems(TestConsts.GROUP_3_USER_IDS));
+      .body("id", hasItems(TestConsts.GROUP_3_USER_IDS));
   }
 
   /**
@@ -92,7 +92,7 @@ class ResourceUsersTests {
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length))
-      .body("", hasItems(TestConsts.GROUP_2_USER_IDS));
+      .body("id", hasItems(TestConsts.GROUP_2_USER_IDS));
   }
 
   /**
@@ -111,7 +111,7 @@ class ResourceUsersTests {
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length))
-      .body("", hasItems(TestConsts.GROUP_2_USER_IDS));
+      .body("id", hasItems(TestConsts.GROUP_2_USER_IDS));
   }
 
   /**
@@ -130,7 +130,7 @@ class ResourceUsersTests {
       .statusCode(200)
       .contentType(ContentType.JSON)
       .body("size()", equalTo(1))
-      .body("", hasItems(TestConsts.USER_1_GROUP_4_ID));
+      .body("id", hasItems(TestConsts.USER_1_GROUP_4_ID));
   }
 
 }
