@@ -17,16 +17,22 @@ import org.keycloak.authorization.policy.evaluation.Result;
 import org.keycloak.authorization.store.ResourceServerStore;
 import org.keycloak.authorization.store.ResourceStore;
 import org.keycloak.authorization.store.StoreFactory;
+import org.keycloak.common.ClientConnection;
+import org.keycloak.models.AdminRoles;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.ModelToRepresentation;
+import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.authorization.AuthorizationRequest;
 import org.keycloak.representations.idm.authorization.Permission;
+import org.keycloak.services.managers.AppAuthManager;
+import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.resource.RealmResourceProvider;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
@@ -56,6 +62,8 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
   @NoCache
   public Response listResourceUsers(
     @Context HttpRequest request,
+    @Context HttpHeaders headers,
+    @Context ClientConnection clientConnection,
     @PathParam("clientId") String clientId,
     @PathParam("resourceId") String resourceId,
     @QueryParam("search") String search,
@@ -63,6 +71,27 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     @QueryParam("max") Long max
   ) {
     RealmModel realm = session.getContext().getRealm();
+
+    AuthenticationManager.AuthResult auth = new AppAuthManager.BearerTokenAuthenticator(session)
+      .setRealm(realm)
+      .setConnection(clientConnection)
+      .setHeaders(headers)
+      .authenticate();
+
+    if (auth == null || auth.getUser() == null || auth.getToken() == null) {
+      return Response.status(Response.Status.UNAUTHORIZED)
+        .entity("Unauthorized")
+        .build();
+    }
+
+    Map<String, AccessToken.Access> resourceAccess = auth.getToken().getResourceAccess();
+    AccessToken.Access realmManagementAccess = resourceAccess.get("realm-management");
+
+    if (realmManagementAccess == null || !realmManagementAccess.isUserInRole(AdminRoles.QUERY_USERS)) {
+      return Response.status(Response.Status.FORBIDDEN)
+        .entity("Forbidden")
+        .build();
+    }
 
     AuthorizationProviderFactory authorizationProviderFactory = (AuthorizationProviderFactory) session.getKeycloakSessionFactory().getProviderFactory(AuthorizationProvider.class);
     AuthorizationProvider authorizationProvider = authorizationProviderFactory.create(session, realm);
@@ -84,7 +113,8 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     }
 
     Stream<UserModel> userStream = getUserStream(realm, search)
-      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource));
+      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource))
+      .sorted(Comparator.comparing(UserModel::getId));
 
     if (first != null) {
       userStream = userStream.skip(first);
