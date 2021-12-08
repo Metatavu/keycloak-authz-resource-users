@@ -16,6 +16,7 @@ import org.keycloak.authorization.policy.evaluation.EvaluationContext;
 import org.keycloak.authorization.policy.evaluation.Result;
 import org.keycloak.authorization.store.ResourceServerStore;
 import org.keycloak.authorization.store.ResourceStore;
+import org.keycloak.authorization.store.ScopeStore;
 import org.keycloak.authorization.store.StoreFactory;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.models.AdminRoles;
@@ -36,6 +37,7 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -66,6 +68,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     @Context ClientConnection clientConnection,
     @PathParam("clientId") String clientId,
     @PathParam("resourceId") String resourceId,
+    @QueryParam("scopes") List<String> requestScopes,
     @QueryParam("search") String search,
     @QueryParam("first") Long first,
     @QueryParam("max") Long max
@@ -97,6 +100,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     AuthorizationProvider authorizationProvider = authorizationProviderFactory.create(session, realm);
     StoreFactory storeFactory = authorizationProvider.getStoreFactory();
     ResourceStore resourceStore = storeFactory.getResourceStore();
+    ScopeStore scopeStore = storeFactory.getScopeStore();
     ResourceServerStore resourceServerStore = storeFactory.getResourceServerStore();
     ResourceServer resourceServer = resourceServerStore.findById(clientId);
     if (resourceServer == null) {
@@ -105,15 +109,35 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
         .build();
     }
 
-    Resource resource = resourceStore.findById(resourceId, resourceServer.getId());
+    String resourceServerId = resourceServer.getId();
+
+    Resource resource = resourceStore.findById(resourceId, resourceServerId);
     if (resource == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource not found")
         .build();
     }
 
+    List<Scope> scopes = new ArrayList<>(requestScopes.size());
+    for (String requestScope : requestScopes) {
+      Scope scope = scopeStore.findByName(requestScope, resourceServerId);
+      if (scope == null) {
+        return Response.status(Response.Status.BAD_REQUEST)
+          .entity(String.format("Requested scope %s could not be found", requestScope))
+          .build();
+      }
+
+      if (!resource.getScopes().contains(scope)) {
+        return Response.status(Response.Status.BAD_REQUEST)
+          .entity(String.format("Requested scope %s is not available on given resource", requestScope))
+          .build();
+      }
+
+      scopes.add(scope);
+    }
+
     Stream<UserModel> userStream = getUserStream(realm, search)
-      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource))
+      .filter(user -> evaluateResource(authorizationProvider, resourceServer, realm, user, resource, scopes))
       .sorted(Comparator.comparing(UserModel::getId));
 
     if (first != null) {
@@ -151,24 +175,28 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
    * @param realm realm
    * @param user user
    * @param resource resource
+   * @param scopes scopes
    * @return whether user has permission to given resource
    */
-  private boolean evaluateResource(AuthorizationProvider authorizationProvider, ResourceServer resourceServer, RealmModel realm, UserModel user, Resource resource) {
+  private boolean evaluateResource(AuthorizationProvider authorizationProvider, ResourceServer resourceServer, RealmModel realm, UserModel user, Resource resource, List<Scope> scopes) {
     Identity identity = new UserModelIdentity(realm, user);
     AuthorizationRequest request = new AuthorizationRequest();
     DecisionResultCollector decisionResultCollector = new DecisionResultCollector(authorizationProvider, resourceServer, request);
-    ResourcePermission permission = new ResourcePermission(resource, Collections.emptyList(), resourceServer);
 
+    Set<ResourcePermission> permissions;
 
-    EvaluationContext evaluationContext = new DefaultEvaluationContext(identity, session);
-    authorizationProvider.evaluators().from(Collections.singleton(permission), evaluationContext).evaluate(decisionResultCollector);
-
-    Map<ResourcePermission, Result> results = decisionResultCollector.getResults();
-    if (!results.containsKey(permission)) {
-      return false;
+    if (scopes == null || scopes.isEmpty()) {
+      permissions = Collections.singleton(new ResourcePermission(resource, Collections.emptyList(), resourceServer));
+    } else {
+      permissions = scopes.stream()
+        .map(scope -> new ResourcePermission(resource, Collections.singleton(scope), resourceServer))
+        .collect(Collectors.toSet());
     }
 
-    return results.values().stream().noneMatch(evaluationResult -> evaluationResult.getEffect().equals(Decision.Effect.DENY));
+    EvaluationContext evaluationContext = new DefaultEvaluationContext(identity, session);
+    authorizationProvider.evaluators().from(permissions, evaluationContext).evaluate(decisionResultCollector);
+    Map<ResourcePermission, Result> results = decisionResultCollector.getResults();
+    return results.values().stream().anyMatch(evaluationResult -> evaluationResult.getEffect().equals(Decision.Effect.PERMIT));
   }
 
   @Override

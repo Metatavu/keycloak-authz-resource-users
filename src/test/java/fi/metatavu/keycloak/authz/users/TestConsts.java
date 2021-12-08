@@ -111,4 +111,5 @@ public class TestConsts {
   public static final String RESOURCE_4_ID = "d0a894c0-d6a4-44dc-b7cb-db2a78d1c6f0";
   public static final String RESOURCE_5_ID = "7abacf64-9589-440f-b96b-113346fd5026";
   public static final String RESOURCE_6_ID = "d52a6206-d1f0-481a-abc1-9904a902b5c3";
+  public static final String SCOPED_RESOURCE_1_ID = "6dda9b5a-1fe7-4c43-8b0d-da9fa5ba04ab";
 }

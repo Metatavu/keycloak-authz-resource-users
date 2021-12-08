@@ -18,7 +18,7 @@ import static org.hamcrest.Matchers.*;
 class ResourceUsersTests {
 
   @Container
-  private final KeycloakContainer keycloak = new KeycloakContainer("jboss/keycloak:15.0.2")
+  private static final KeycloakContainer keycloak = new KeycloakContainer("jboss/keycloak:15.0.2")
     .withProviderClassesFrom("target/classes")
     .withRealmImportFile("kc.json");
 
@@ -242,6 +242,112 @@ class ResourceUsersTests {
       .contentType(ContentType.JSON)
       .body("size()", equalTo(1))
       .body("id", hasItems(TestConsts.GROUP_1_USER_IDS[9]));
+  }
+
+  /**
+   * Asserts that scoped resource 1 has:
+   *
+   * - access scope permitted to group 1 users
+   * - manage scope permitted to group 2 users
+   * - using both scopes returns users of both groups
+   */
+  @Test
+  void testScopedResource1Users() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .queryParam("scopes", "access")
+      .get(getResourceUsersUrl(TestConsts.SCOPED_RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_1_USER_IDS.length))
+      .body("id", hasItems(TestConsts.GROUP_1_USER_IDS));
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .queryParam("scopes", "manage")
+      .get(getResourceUsersUrl(TestConsts.SCOPED_RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length))
+      .body("id", hasItems(TestConsts.GROUP_2_USER_IDS));
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .queryParam("scopes", "access", "manage")
+      .get(getResourceUsersUrl(TestConsts.SCOPED_RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_1_USER_IDS.length + TestConsts.GROUP_2_USER_IDS.length))
+      .body("id", hasItems(TestConsts.GROUP_1_USER_IDS))
+      .body("id", hasItems(TestConsts.GROUP_2_USER_IDS));
+  }
+
+  /**
+   * Asserts that invalid scope will end up in bad request
+   */
+  @Test
+  void testInvalidScoped() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .queryParam("scopes", "invalid")
+      .get(getResourceUsersUrl(TestConsts.SCOPED_RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(400);
+  }
+
+  /**
+   * Asserts that querying non scoped resource with scope yields bad request
+   */
+  @Test
+  void testResource1WithScope() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .queryParam("scopes", "manage")
+      .get(getResourceUsersUrl(TestConsts.RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(400);
+  }
+  /**
+   * Asserts that querying scoped resource without scope results in empty result
+   */
+  @Test
+  void testScopedResource1WithoutScopes() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .get(getResourceUsersUrl(TestConsts.SCOPED_RESOURCE_1_ID))
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(0));
   }
 
   /**
