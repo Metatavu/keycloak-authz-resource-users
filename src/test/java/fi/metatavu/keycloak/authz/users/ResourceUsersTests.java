@@ -18,9 +18,10 @@ import static org.hamcrest.Matchers.*;
 class ResourceUsersTests {
 
   @Container
-  private static final KeycloakContainer keycloak = new KeycloakContainer("jboss/keycloak:15.0.2")
+  private static final KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:17.0.1")
     .withProviderClassesFrom("target/classes")
-    .withRealmImportFile("kc.json");
+    .withRealmImportFile("kc.json")
+    .withFeaturesEnabled("upload-scripts");
 
   /**
    * Asserts that resource 1 is allowed only for users in group 1 via group policy
@@ -28,7 +29,6 @@ class ResourceUsersTests {
   @Test
   void testResource1Users() {
     assertTrue(keycloak.isRunning());
-
     given()
       .baseUri(keycloak.getAuthServerUrl())
       .when()
@@ -357,7 +357,7 @@ class ResourceUsersTests {
    * @return resource users URL
    */
   private String getResourceUsersUrl(String resourceId) {
-    return String.format("/realms/%s/authz-resource-users/clients/%s/resource/%s/users",
+    return String.format("realms/%s/authz-resource-users/clients/%s/resource/%s/users",
       TestConsts.REALM,
       TestConsts.RESOURCE_SERVER_ID,
       resourceId
@@ -412,7 +412,7 @@ class ResourceUsersTests {
       .param("username", username)
       .param("password", password)
       .param("client_secret", clientSecret)
-      .post(String.format("%s/realms/%s/protocol/openid-connect/token", keycloak.getAuthServerUrl(), realm))
+      .post(String.format("%srealms/%s/protocol/openid-connect/token", keycloak.getAuthServerUrl(), realm))
       .then()
       .assertThat()
       .statusCode(200)
