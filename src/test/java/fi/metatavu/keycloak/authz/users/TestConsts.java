@@ -6,16 +6,16 @@ package fi.metatavu.keycloak.authz.users;
 public class TestConsts {
 
   public static final String[] GROUP_1_USER_IDS = {
-    TestConsts.USER_1_GROUP_1_ID,
-    TestConsts.USER_2_GROUP_1_ID,
-    TestConsts.USER_3_GROUP_1_ID,
+    TestConsts.USER_7_GROUP_1_ID,
     TestConsts.USER_4_GROUP_1_ID,
+    TestConsts.USER_8_GROUP_1_ID,
+    TestConsts.USER_2_GROUP_1_ID,
+    TestConsts.USER_10_GROUP_1_ID,
+    TestConsts.USER_3_GROUP_1_ID,
     TestConsts.USER_5_GROUP_1_ID,
     TestConsts.USER_6_GROUP_1_ID,
-    TestConsts.USER_7_GROUP_1_ID,
-    TestConsts.USER_8_GROUP_1_ID,
     TestConsts.USER_9_GROUP_1_ID,
-    TestConsts.USER_10_GROUP_1_ID
+    TestConsts.USER_1_GROUP_1_ID
   };
 
   public static final String[] GROUP_2_USER_IDS = {
@@ -43,6 +43,15 @@ public class TestConsts {
     TestConsts.USER_9_GROUP_3_ID,
     TestConsts.USER_10_GROUP_3_ID
   };
+
+  public static final String REALM = "test";
+  public static final String RESOURCE_SERVER_ID = "e5ad8dc7-67f4-4d58-baab-b7162c53bced";
+  public static final String CLIENT_ID = "authz";
+  public static final String CLIENT_SECRET = "bc61b550-f6b9-4442-af53-32ba46b51551";
+  public static final String ADMIN_USERNAME = "admin";
+  public static final String ADMIN_PASSWORD = "admin";
+  public static final String USER_USERNAME = "user";
+  public static final String USER_PASSWORD = "user";
 
   public static final String ADMIN_ID="85229924-3a17-45f4-b0e1-5d4a3711bb09";
   public static final String USER_1_GROUP_1_ID="e5f42787-6eca-4b17-ad67-7970e4234925";
@@ -102,4 +111,5 @@ public class TestConsts {
   public static final String RESOURCE_4_ID = "d0a894c0-d6a4-44dc-b7cb-db2a78d1c6f0";
   public static final String RESOURCE_5_ID = "7abacf64-9589-440f-b96b-113346fd5026";
   public static final String RESOURCE_6_ID = "d52a6206-d1f0-481a-abc1-9904a902b5c3";
+  public static final String SCOPED_RESOURCE_1_ID = "6dda9b5a-1fe7-4c43-8b0d-da9fa5ba04ab";
 }
