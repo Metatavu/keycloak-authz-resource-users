@@ -1565,16 +1565,6 @@
           "groups" : "[{\"path\":\"/group-2\",\"extendChildren\":false}]"
         }
       }, {
-        "id" : "5b4a60e6-6897-41e1-b50d-1e8a48a73048",
-        "name" : "Default Policy",
-        "description" : "A policy that grants access only for users within this realm",
-        "type" : "js",
-        "logic" : "POSITIVE",
-        "decisionStrategy" : "AFFIRMATIVE",
-        "config" : {
-          "code" : "// by default, grants any permission associated with this policy\n$evaluation.grant();\n"
-        }
-      }, {
         "id" : "9585355d-2ff4-49f2-b429-541332b3fc0e",
         "name" : "group-3-role",
         "type" : "role",
@@ -1591,17 +1581,6 @@
         "decisionStrategy" : "UNANIMOUS",
         "config" : {
           "users" : "[\"user-1.group-4\"]"
-        }
-      }, {
-        "id" : "cb7f59ba-43cb-4ffe-b3a8-abd5924253fb",
-        "name" : "Default Permission",
-        "description" : "A permission that applies to the default resource type",
-        "type" : "resource",
-        "logic" : "POSITIVE",
-        "decisionStrategy" : "UNANIMOUS",
-        "config" : {
-          "defaultResourceType" : "urn:authz:resources:default",
-          "applyPolicies" : "[\"Default Policy\"]"
         }
       }, {
         "id" : "402f990f-af37-4f9d-aca5-2f02f789bf74",
