@@ -102,16 +102,14 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     ResourceStore resourceStore = storeFactory.getResourceStore();
     ScopeStore scopeStore = storeFactory.getScopeStore();
     ResourceServerStore resourceServerStore = storeFactory.getResourceServerStore();
-    ResourceServer resourceServer = resourceServerStore.findById(clientId);
+    ResourceServer resourceServer = resourceServerStore.findById(realm, clientId);
     if (resourceServer == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource server not found")
         .build();
     }
 
-    String resourceServerId = resourceServer.getId();
-
-    Resource resource = resourceStore.findById(resourceId, resourceServerId);
+    Resource resource = resourceStore.findById(realm, resourceServer, resourceId);
     if (resource == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource not found")
@@ -120,7 +118,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
 
     List<Scope> scopes = new ArrayList<>(requestScopes.size());
     for (String requestScope : requestScopes) {
-      Scope scope = scopeStore.findByName(requestScope, resourceServerId);
+      Scope scope = scopeStore.findByName(resourceServer, requestScope);
       if (scope == null) {
         return Response.status(Response.Status.BAD_REQUEST)
           .entity(String.format("Requested scope %s could not be found", requestScope))
