@@ -150,6 +150,104 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
         .build();
   }
 
+  @POST
+  @Path("/clients/{clientId}/resourceUserAccess")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
+  @NoCache
+  public Response queryResourceUsersAccess(
+    @Context HttpRequest request,
+    @Context HttpHeaders headers,
+    @Context ClientConnection clientConnection,
+    @PathParam("clientId") String clientId,
+    AuthzResourceUsersAccessRequest authzResourceUsersRequest
+  ) {
+    RealmModel realm = session.getContext().getRealm();
+
+    AuthenticationManager.AuthResult auth = new AppAuthManager.BearerTokenAuthenticator(session)
+      .setRealm(realm)
+      .setConnection(clientConnection)
+      .setHeaders(headers)
+      .authenticate();
+
+    if (auth == null || auth.getUser() == null || auth.getToken() == null) {
+      return Response.status(Response.Status.UNAUTHORIZED)
+        .entity("Unauthorized")
+        .build();
+    }
+
+    Map<String, AccessToken.Access> resourceAccess = auth.getToken().getResourceAccess();
+    AccessToken.Access realmManagementAccess = resourceAccess.get("realm-management");
+
+    if (realmManagementAccess == null || !realmManagementAccess.isUserInRole(AdminRoles.QUERY_USERS)) {
+      return Response.status(Response.Status.FORBIDDEN)
+        .entity("Forbidden")
+        .build();
+    }
+
+    AuthorizationProviderFactory authorizationProviderFactory = (AuthorizationProviderFactory) session.getKeycloakSessionFactory().getProviderFactory(AuthorizationProvider.class);
+    AuthorizationProvider authorizationProvider = authorizationProviderFactory.create(session, realm);
+    StoreFactory storeFactory = authorizationProvider.getStoreFactory();
+    ResourceStore resourceStore = storeFactory.getResourceStore();
+    ScopeStore scopeStore = storeFactory.getScopeStore();
+    ResourceServerStore resourceServerStore = storeFactory.getResourceServerStore();
+    ResourceServer resourceServer = resourceServerStore.findById(realm, clientId);
+    if (resourceServer == null) {
+      return Response.status(Response.Status.NOT_FOUND)
+        .entity("Resource server not found")
+        .build();
+    }
+
+    List<String> userIds = authzResourceUsersRequest.getUserIds();
+    List<String> resourceIds = authzResourceUsersRequest.getResourceIds();
+    List<String> requestScopes = authzResourceUsersRequest.getScopes();
+
+    List<AuthzResourceUserAccessResponse> response = new ArrayList<>();
+
+    for (String userId : userIds) {
+      UserModel user = session.users().getUserById(realm, userId);
+      if (user == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+          .entity("User not found")
+          .build();
+      }
+
+      for (String resourceId : resourceIds) {
+        Resource resource = resourceStore.findById(realm, resourceServer, resourceId);
+        if (resource == null) {
+          return Response.status(Response.Status.NOT_FOUND)
+            .entity("Resource not found")
+            .build();
+        }
+        
+        List<String> allowedScopes = new ArrayList<>();
+        for (String requestScope : requestScopes) {
+          Scope scope = scopeStore.findByName(resourceServer, requestScope);
+          if (scope == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+              .entity(String.format("Requested scope %s could not be found", requestScope))
+              .build();
+          }
+    
+          if (!resource.getScopes().contains(scope)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+              .entity(String.format("Requested scope %s is not available on given resource", requestScope))
+              .build();
+          }
+
+          if (evaluateResource(authorizationProvider, resourceServer, realm, user, resource, List.of(scope))) {
+            allowedScopes.add(requestScope);
+          }
+        }
+        if (!allowedScopes.isEmpty()) {
+          response.add(new AuthzResourceUserAccessResponse(userId, resourceId, allowedScopes));
+        }
+      }
+    }
+
+    return Response.ok(response).build();
+  }
+
   /**
    * Returns stream to users
    *
@@ -180,6 +278,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     Identity identity = new UserModelIdentity(realm, user);
     AuthorizationRequest request = new AuthorizationRequest();
     DecisionResultCollector decisionResultCollector = new DecisionResultCollector(authorizationProvider, resourceServer, request);
+    List<String> requestedScopeNames = scopes.stream().map(scope -> scope.getName()).collect(Collectors.toList());
 
     Set<ResourcePermission> permissions;
 
@@ -194,7 +293,17 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     EvaluationContext evaluationContext = new DefaultEvaluationContext(identity, session);
     authorizationProvider.evaluators().from(permissions, evaluationContext).evaluate(decisionResultCollector);
     Map<ResourcePermission, Result> results = decisionResultCollector.getResults();
-    return results.values().stream().anyMatch(evaluationResult -> evaluationResult.getEffect().equals(Decision.Effect.PERMIT));
+    return results.values().stream().anyMatch(evaluationResult -> {
+      boolean permit = evaluationResult.getEffect().equals(Decision.Effect.PERMIT);
+      boolean hasScopes = evaluationResult.getResults()
+        .stream()
+        .flatMap(res -> res.getPolicy().getScopes().stream())
+        .map(scope -> scope.getName())
+        .collect(Collectors.toList())
+        .containsAll(requestedScopeNames);
+
+      return permit && hasScopes;
+    });
   }
 
   @Override
