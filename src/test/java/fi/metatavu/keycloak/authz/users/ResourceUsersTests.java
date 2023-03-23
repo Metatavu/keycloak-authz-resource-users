@@ -1,6 +1,7 @@
 package fi.metatavu.keycloak.authz.users;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fi.metatavu.keycloak.authz.AuthzResourceUsersAccessRequest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 import org.keycloak.representations.AccessTokenResponse;
@@ -8,6 +9,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
@@ -351,6 +357,149 @@ class ResourceUsersTests {
   }
 
   /**
+   * Asserts that user does not have permission to access resource access query
+   */
+  @Test
+  void testResourceUsersQueryForbidden() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getUserAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("access")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(403);
+  }
+
+  /**
+   * Asserts that scoped resource 1 query response contains correct users
+   * 
+   */
+  @Test
+  void testScopedResource1UsersQuery() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("access")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_1_USER_IDS.length));
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_2_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("manage")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length));
+
+    List<String> combinedUserIds = Stream
+      .concat(List.of(TestConsts.GROUP_1_USER_IDS).stream(), List.of(TestConsts.GROUP_2_USER_IDS).stream())
+      .collect(Collectors.toList());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(combinedUserIds, List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("manage", "access")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_1_USER_IDS.length + TestConsts.GROUP_2_USER_IDS.length));
+
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(combinedUserIds, List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("manage")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(TestConsts.GROUP_2_USER_IDS.length));
+  }
+
+  /**
+   * Asserts that invalid scope will end up in bad request
+   */
+  @Test
+  void testInvalidScopedQuery() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("invalid")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(400);
+  }
+
+  /**
+   * Asserts that querying non scoped resource with scope yields bad request
+   */
+  @Test
+  void testResource1QueryWithScope() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.RESOURCE_1_ID), List.of("manage")))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(400);
+  }
+  /**
+   * Asserts that querying scoped resource without scope results in empty result
+   */
+  @Test
+  void testScopedResource1QueryWithoutScopes() {
+    assertTrue(keycloak.isRunning());
+
+    given()
+      .baseUri(keycloak.getAuthServerUrl())
+      .when()
+      .header("Authorization", String.format("Bearer %s", getAdminAccessToken()))
+      .contentType(ContentType.JSON)
+      .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of()))
+      .post(getResourceUsersQueryUrl())
+      .then()
+      .assertThat()
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(0));
+  }
+
+  /**
    * Returns resource users URL for given resource id
    *
    * @param resourceId resource id
@@ -362,6 +511,35 @@ class ResourceUsersTests {
       TestConsts.RESOURCE_SERVER_ID,
       resourceId
     );
+  }
+
+  /**
+   * Returns resource users URL for given resource id
+   *
+   * @param resourceId resource id
+   * @return resource users URL
+   */
+  private String getResourceUsersQueryUrl() {
+    return String.format("realms/%s/authz-resource-users/clients/%s/resourceUserAccess",
+      TestConsts.REALM,
+      TestConsts.RESOURCE_SERVER_ID
+    );
+  }
+
+  /**
+   * Creates query request body
+   * 
+   * @param userIds users ids to query
+   * @param resourceIds resource ids to query
+   * @param scopes scopes to query
+   * @return request body
+   */
+  private AuthzResourceUsersAccessRequest getRequestBody(List<String> userIds, List<String> resourceIds, List<String> scopes) {
+    AuthzResourceUsersAccessRequest request = new AuthzResourceUsersAccessRequest();
+    request.setUserIds(userIds);
+    request.setResourceIds(resourceIds);
+    request.setScopes(scopes);
+    return request;
   }
 
   /**
