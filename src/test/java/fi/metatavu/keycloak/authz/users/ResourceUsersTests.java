@@ -442,7 +442,7 @@ class ResourceUsersTests {
   }
 
   /**
-   * Asserts that invalid scope will end up in bad request
+   * Asserts that invalid scope will give empty result
    */
   @Test
   void testInvalidScopedQuery() {
@@ -456,12 +456,13 @@ class ResourceUsersTests {
       .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.SCOPED_RESOURCE_1_ID), List.of("invalid")))
       .post(getResourceUsersQueryUrl())
       .then()
-      .assertThat()
-      .statusCode(400);
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(0));
   }
 
   /**
-   * Asserts that querying non scoped resource with scope yields bad request
+   * Asserts that querying non scoped resource with scope yields empty results
    */
   @Test
   void testResource1QueryWithScope() {
@@ -475,8 +476,9 @@ class ResourceUsersTests {
       .body(getRequestBody(List.of(TestConsts.GROUP_1_USER_IDS), List.of(TestConsts.RESOURCE_1_ID), List.of("manage")))
       .post(getResourceUsersQueryUrl())
       .then()
-      .assertThat()
-      .statusCode(400);
+      .statusCode(200)
+      .contentType(ContentType.JSON)
+      .body("size()", equalTo(0));
   }
   /**
    * Asserts that querying scoped resource without scope results in empty result
