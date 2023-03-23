@@ -207,32 +207,24 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     for (String userId : userIds) {
       UserModel user = session.users().getUserById(realm, userId);
       if (user == null) {
-        return Response.status(Response.Status.NOT_FOUND)
-          .entity("User not found")
-          .build();
+        continue;
       }
 
       for (String resourceId : resourceIds) {
         Resource resource = resourceStore.findById(realm, resourceServer, resourceId);
         if (resource == null) {
-          return Response.status(Response.Status.NOT_FOUND)
-            .entity("Resource not found")
-            .build();
+          continue;
         }
         
         List<String> allowedScopes = new ArrayList<>();
         for (String requestScope : requestScopes) {
           Scope scope = scopeStore.findByName(resourceServer, requestScope);
           if (scope == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-              .entity(String.format("Requested scope %s could not be found", requestScope))
-              .build();
+            continue;
           }
     
           if (!resource.getScopes().contains(scope)) {
-            return Response.status(Response.Status.BAD_REQUEST)
-              .entity(String.format("Requested scope %s is not available on given resource", requestScope))
-              .build();
+            continue;
           }
 
           if (evaluateResource(authorizationProvider, resourceServer, realm, user, resource, List.of(scope))) {
