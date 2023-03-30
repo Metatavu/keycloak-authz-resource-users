@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.*;
 class ResourceUsersTests {
 
   @Container
-  private static final KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:19.0.0")
+  private static final KeycloakContainer keycloak = new KeycloakContainer("quay.io/keycloak/keycloak:17.0.1")
     .withProviderClassesFrom("target/classes")
     .withRealmImportFile("kc.json")
     .withFeaturesEnabled("scripts");
