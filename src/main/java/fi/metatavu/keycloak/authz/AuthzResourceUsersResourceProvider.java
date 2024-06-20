@@ -1,7 +1,10 @@
 package fi.metatavu.keycloak.authz;
 
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.annotations.cache.NoCache;
-import org.jboss.resteasy.spi.HttpRequest;
 import org.keycloak.authorization.AuthorizationProvider;
 import org.keycloak.authorization.AuthorizationProviderFactory;
 import org.keycloak.authorization.Decision;
@@ -19,10 +22,7 @@ import org.keycloak.authorization.store.ResourceStore;
 import org.keycloak.authorization.store.ScopeStore;
 import org.keycloak.authorization.store.StoreFactory;
 import org.keycloak.common.ClientConnection;
-import org.keycloak.models.AdminRoles;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.idm.authorization.AuthorizationRequest;
@@ -31,11 +31,6 @@ import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.resource.RealmResourceProvider;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,11 +56,9 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
   @GET
   @Path("/clients/{clientId}/resource/{resourceId}/users")
   @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
   @NoCache
   public Response listResourceUsers(
-    @Context HttpRequest request,
-    @Context HttpHeaders headers,
-    @Context ClientConnection clientConnection,
     @PathParam("clientId") String clientId,
     @PathParam("resourceId") String resourceId,
     @QueryParam("scopes") List<String> requestScopes,
@@ -73,7 +66,10 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     @QueryParam("first") Long first,
     @QueryParam("max") Long max
   ) {
-    RealmModel realm = session.getContext().getRealm();
+    KeycloakContext context = session.getContext();
+    RealmModel realm = context.getRealm();
+    HttpHeaders headers = context.getRequestHeaders();
+    ClientConnection clientConnection = context.getConnection();
 
     AuthenticationManager.AuthResult auth = new AppAuthManager.BearerTokenAuthenticator(session)
       .setRealm(realm)
@@ -102,14 +98,14 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     ResourceStore resourceStore = storeFactory.getResourceStore();
     ScopeStore scopeStore = storeFactory.getScopeStore();
     ResourceServerStore resourceServerStore = storeFactory.getResourceServerStore();
-    ResourceServer resourceServer = resourceServerStore.findById(realm, clientId);
+    ResourceServer resourceServer = resourceServerStore.findById(clientId);
     if (resourceServer == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource server not found")
         .build();
     }
 
-    Resource resource = resourceStore.findById(realm, resourceServer, resourceId);
+    Resource resource = resourceStore.findById(resourceServer, resourceId);
     if (resource == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource not found")
@@ -156,13 +152,13 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
   @Consumes(MediaType.APPLICATION_JSON)
   @NoCache
   public Response queryResourceUsersAccess(
-    @Context HttpRequest request,
-    @Context HttpHeaders headers,
-    @Context ClientConnection clientConnection,
     @PathParam("clientId") String clientId,
     AuthzResourceUsersAccessRequest authzResourceUsersRequest
   ) {
-    RealmModel realm = session.getContext().getRealm();
+    KeycloakContext context = session.getContext();
+    RealmModel realm = context.getRealm();
+    HttpHeaders headers = context.getRequestHeaders();
+    ClientConnection clientConnection = context.getConnection();
 
     AuthenticationManager.AuthResult auth = new AppAuthManager.BearerTokenAuthenticator(session)
       .setRealm(realm)
@@ -191,7 +187,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
     ResourceStore resourceStore = storeFactory.getResourceStore();
     ScopeStore scopeStore = storeFactory.getScopeStore();
     ResourceServerStore resourceServerStore = storeFactory.getResourceServerStore();
-    ResourceServer resourceServer = resourceServerStore.findById(realm, clientId);
+    ResourceServer resourceServer = resourceServerStore.findById(clientId);
     if (resourceServer == null) {
       return Response.status(Response.Status.NOT_FOUND)
         .entity("Resource server not found")
@@ -211,7 +207,7 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
       }
 
       for (String resourceId : resourceIds) {
-        Resource resource = resourceStore.findById(realm, resourceServer, resourceId);
+        Resource resource = resourceStore.findById(resourceServer, resourceId);
         if (resource == null) {
           continue;
         }
@@ -248,11 +244,12 @@ public class AuthzResourceUsersResourceProvider implements RealmResourceProvider
    * @return stream for matching users
    */
   private Stream<UserModel> getUserStream(RealmModel realm, String search) {
+
     if (search != null) {
       return session.users().searchForUserStream(realm, search);
     }
 
-    return session.users().getUsersStream(realm, false);
+    return session.users().searchForUserStream(realm, Map.of());
   }
 
   /**
