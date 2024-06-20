@@ -4,6 +4,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.ext.Provider;
 import org.jboss.resteasy.annotations.cache.NoCache;
 import org.keycloak.authorization.AuthorizationProvider;
 import org.keycloak.authorization.AuthorizationProviderFactory;
@@ -40,6 +41,7 @@ import java.util.stream.Stream;
  *
  * @author Antti Leppä
  */
+@Provider
 public class AuthzResourceUsersResourceProvider implements RealmResourceProvider {
 
   private final KeycloakSession session;
