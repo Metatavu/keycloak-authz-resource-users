@@ -3,7 +3,7 @@
 
   <groupId>fi.metatavu.keycloak</groupId>
   <artifactId>keycloak-authz-resource-users</artifactId>
-  <version>19.0.1-SNAPSHOT</version>
+  <version>25.0.0-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Keycloak provider for authz resource users</name>
   <description>Keycloak provider for providing REST endpoints for quering authz resource users</description>
